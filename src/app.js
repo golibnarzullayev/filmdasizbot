@@ -7,22 +7,16 @@ const app = express();
 
 app.use(express.json());
 
-app.use("/filmdasizbot", bot.webhookCallback("/secret-path"));
-bot.telegram.setWebhook(environments.SERVER_URL);
-
-app.get("/filmdasizbot", (req, res) => {
-  res.status(200).json({
-    ok: true,
-    message: "Bot running",
+async function launchWebhook() {
+  const webhook = await bot.createWebhook({ domain: environments.SERVER_URL });
+  app.get("/ping", (_, res) => res.send("Pong!"));
+  app.use(webhook);
+  app.listen(config.port, () => {
+    logger.info(`Production server is listening on port ${config.port}`);
   });
-});
+}
 
-app.use((req, res) => {
-  res.status(404).json({
-    ok: false,
-    message: "Page not found",
-  });
-});
+launchWebhook().then();
 
 app.listen(environments.PORT, () => {
   console.log(`Bot launched on port: ${environments.PORT} ${new Date()}`);
