@@ -11,13 +11,9 @@ async function launchWebhook() {
   const webhook = await bot.createWebhook({ domain: environments.SERVER_URL });
   app.get("/ping", (_, res) => res.send("Pong!"));
   app.use(webhook);
-  app.listen(config.port, () => {
-    logger.info(`Production server is listening on port ${config.port}`);
+  app.listen(environments.PORT, () => {
+    console.log(`Production server is listening on port ${environments.PORT}`);
   });
 }
 
 launchWebhook().then();
-
-app.listen(environments.PORT, () => {
-  console.log(`Bot launched on port: ${environments.PORT} ${new Date()}`);
-});
