@@ -17,3 +17,11 @@ async function launchWebhook() {
 }
 
 launchWebhook().then();
+
+process.on("uncaughtException", (error) => {
+  console.error(JSON.stringify(error, Object.getOwnPropertyNames(error)));
+});
+
+process.on("unhandledRejection", (error) => {
+  console.error(JSON.stringify(error, Object.getOwnPropertyNames(error)));
+});
