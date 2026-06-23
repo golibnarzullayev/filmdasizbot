@@ -6,6 +6,7 @@ import { errorHandler } from "../helpers/error.handler.js";
 import { isAdmin } from "../middlewares/isAdmin.js";
 import { nameFormatter } from "../helpers/name.formatter.js";
 import { subscriptionMiddleware } from "../middlewares/subscription.js";
+import { parsePostLink } from "../helpers/parse.link.js";
 
 export const startScene = new Scenes.BaseScene("start");
 
@@ -34,7 +35,13 @@ startScene.hears( /^\d+$/, async (ctx) => {
             return
         }
 
-        await ctx.replyWithDocument(movie.link, {
+        const post = parsePostLink(movie.link);
+        if (!post) {
+            await ctx.replyWithHTML("<b>❌ Kino havolasi noto'g'ri saqlangan!</b>");
+            return
+        }
+
+        await ctx.telegram.copyMessage(ctx.chat.id, post.chatId, post.messageId, {
             caption: `<b>🎬 ${movie.title}</b> | Kod #${movie.code}\n`+
                     `-  -  -  -  -  -  -  -  -\n`+
                     `${movie.description}\n`+

@@ -8,6 +8,7 @@ import {
 
 import { MovieModel } from "../../models/movie.model.js";
 import { errorHandler } from "../../helpers/error.handler.js";
+import { parsePostLink } from "../../helpers/parse.link.js";
 
 export const moviesAddScene = new Scenes.WizardScene("movies:add",
     // Get title and request description
@@ -160,10 +161,16 @@ export const moviesAddScene = new Scenes.WizardScene("movies:add",
                     return;
                 }
                 
-                const channelIdMatch = movieLink.match(/t\.me\/(.*?)\/(\d+)/);
-                const channelUsername = channelIdMatch ? channelIdMatch[1] : null;
+                const post = parsePostLink(movieLink);
+                if (!post) {
+                    await ctx.reply(
+                        "Havola noto'g'ri formatda. Masalan: https://t.me/kanal/123",
+                        cancelOrBackInlineKeyboard(ctx.wizard.cursor)
+                    );
+                    return;
+                }
 
-                const channelInfo = await ctx.telegram.getChatAdministrators(`@${channelUsername}`).catch(() => false);
+                const channelInfo = await ctx.telegram.getChatAdministrators(post.chatId).catch(() => false);
                 if (!channelInfo) {
                     await ctx.replyWithHTML(
                         "Kanal yoki post mavjud emas, <b>kanal va post ommaviy bo'lishi kerak!</b> Yoki bot kanalda admin emas! Iltimos, qaytadan urinib ko'ring:"
@@ -174,7 +181,7 @@ export const moviesAddScene = new Scenes.WizardScene("movies:add",
                 ctx.session.movie.link = movieLink;
 
                 try {
-                    await ctx.replyWithDocument(movieLink, {
+                    await ctx.telegram.copyMessage(ctx.chat.id, post.chatId, post.messageId, {
                         caption: `<b>Kino nomi:</b> ${ctx.session.movie.title}\n\n`+
                         `<b>Kino tavsifi:</b> ${ctx.session.movie.description}\n\n`+
                         `<b>Kino kodi:</b> ${ctx.session.movie.code}\n\n`+
@@ -184,7 +191,7 @@ export const moviesAddScene = new Scenes.WizardScene("movies:add",
                     });
                 } catch {
                     await ctx.reply(
-                        "Ma'lumotlarni qayta ishlashda qandaydir muammo yuz berdi. Iltimos qayta urinib ko'ring!",
+                        "Postni nusxalab bo'lmadi. Post mavjudligini va bot kanalda admin ekanini tekshiring, qayta urinib ko'ring!",
                         cancelOrBackInlineKeyboard(ctx.wizard.cursor)
                     )
                     return
