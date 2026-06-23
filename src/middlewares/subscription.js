@@ -1,12 +1,7 @@
 import { errorHandler } from "../helpers/error.handler.js";
-import { nameFormatter } from "../helpers/name.formatter.js";
 import { ChannelModel } from "../models/channel.model.js";
-import { UserModel } from "../models/user.model.js";
 import { subscribingKeyboard } from "../utils/keyboards.js";
-
-const isAdminUser = async (userId) => {
-    return await UserModel.exists({ chatId: userId, isAdmin: true });
-};
+import { isAdminUser } from "./isAdmin.js";
 
 const getUnsubscribedChannels = async (ctx, userId) => {
     const channels = await ChannelModel.find();
@@ -19,7 +14,8 @@ const getUnsubscribedChannels = async (ctx, userId) => {
                 unsubscribedChannels.push(channel);
             }
         } catch (error) {
-            errorHandler(error, ctx);
+            // Bot kanalda admin emas yoki kanal mavjud emas — jim log, userga xabar yuborma.
+            console.error(`getChatMember failed for channel ${channel.chatId}:`, error?.message ?? error);
         }
     }
 
@@ -34,7 +30,7 @@ const sendSubscriptionMessage = async (ctx, unsubscribedChannels) => {
     );
 };
 
-const handleSubscriptionConfirmation = async (ctx, userId) => {
+const handleSubscriptionConfirmation = async (ctx) => {
     await ctx.answerCbQuery("Rahmat! 😊");
     await ctx.deleteMessage();
     ctx.scene.enter("start");
@@ -59,7 +55,7 @@ export const subscriptionMiddleware = async (ctx, next) => {
             await sendSubscriptionMessage(ctx, unsubscribedChannels);
         } else {
             if (ctx.callbackQuery?.data === "subscribed") {
-                await handleSubscriptionConfirmation(ctx, userId);
+                await handleSubscriptionConfirmation(ctx);
             }
             return next();
         }

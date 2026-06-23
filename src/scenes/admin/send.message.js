@@ -1,9 +1,4 @@
 import { Markup, Scenes } from "telegraf";
-import {
-  adminKeyboard,
-  backKeyboard,
-  sendOrCanelKeyboard,
-} from "../../utils/keyboards.js";
 import { UserModel } from "../../models/user.model.js";
 
 export const sendMessageScene = new Scenes.WizardScene(
@@ -26,7 +21,10 @@ export const sendMessageScene = new Scenes.WizardScene(
   },
   async (ctx) => {
     try {
-      ctx.session.isForward = !!ctx.update?.message?.forward_from;
+      ctx.session.isForward = !!(
+        ctx.update?.message?.forward_origin ||
+        ctx.update?.message?.forward_from
+      );
       ctx.session.lastMessageId = ctx.message?.message_id;
 
       const keyboard = Markup.inlineKeyboard([
@@ -96,17 +94,20 @@ sendMessageScene.action(/send_message/g, async (ctx) => {
             );
           }
           promises.push(
-            promise.catch(async (error) => {
-              console.error(`Userga (${user.chatId}) yuborishda xato:`, error);
-              await UserModel.updateOne(
-                { _id: user._id.toString() },
-                { active: false }
-              ).catch((err) =>
-                console.error("Userni update qilishda xato:", err)
-              );
-            })
+            promise
+              .then(() => {
+                count++;
+              })
+              .catch(async (error) => {
+                console.error(`Userga (${user.chatId}) yuborishda xato:`, error);
+                await UserModel.updateOne(
+                  { _id: user._id.toString() },
+                  { active: false }
+                ).catch((err) =>
+                  console.error("Userni update qilishda xato:", err)
+                );
+              })
           );
-          count++;
         } catch (err) {
           console.error("Ichki try xato:", err);
           await UserModel.updateOne(

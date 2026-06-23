@@ -6,7 +6,8 @@ const {
     DB_URI,
     ERROR_CHANNEL,
     SERVER_URL,
-    PORT
+    PORT,
+    ADMIN_IDS
 } = process.env
 
 export const environments = {
@@ -14,5 +15,10 @@ export const environments = {
     DB_URI,
     ERROR_CHANNEL,
     SERVER_URL,
-    PORT: PORT || 5000
+    PORT: PORT || 5000,
+    ADMIN_IDS: (ADMIN_IDS || "")
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean)
+        .map(Number)
 }

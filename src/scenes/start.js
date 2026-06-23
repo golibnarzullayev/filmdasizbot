@@ -26,7 +26,7 @@ startScene.hears( /^\d+$/, async (ctx) => {
     try {
         const code = Number(ctx.message.text);
         const movie = await MovieModel.findOne({ code });
-    
+
         if (!movie) {
             await ctx.replyWithHTML(
                 "<b>❌ Bunday kodli kino mavjud emas!</b>"
@@ -34,19 +34,17 @@ startScene.hears( /^\d+$/, async (ctx) => {
             return
         }
 
-        movie.count++
-    
         await ctx.replyWithDocument(movie.link, {
             caption: `<b>🎬 ${movie.title}</b> | Kod #${movie.code}\n`+
                     `-  -  -  -  -  -  -  -  -\n`+
                     `${movie.description}\n`+
-                    `<b>📥 • Yuklandi :</b> ${movie.count}\n\n`+
+                    `<b>📥 • Yuklandi :</b> ${movie.count + 1}\n\n`+
                     `<b>🔘 @${bot.botInfo?.username}</b>`,
             parse_mode: "HTML",
             ...movieKeyboard(code)
         });
 
-        movie.save()
+        await MovieModel.updateOne({ _id: movie._id }, { $inc: { count: 1 } })
     } catch (error) {
         await ctx.replyWithHTML("<b>❌ Kinoni yuborishda xatolik</b>")
         errorHandler(error)
@@ -55,8 +53,8 @@ startScene.hears( /^\d+$/, async (ctx) => {
 
 startScene.action("remove-movie", async (ctx) => {
     try {
-        ctx.answerCbQuery("")
-        await ctx.deleteMessage(ctx.callbackQuery.inline_message_id)
+        await ctx.answerCbQuery("")
+        await ctx.deleteMessage()
     } catch (error) {
         errorHandler(error, ctx)
     }

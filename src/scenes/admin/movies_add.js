@@ -7,6 +7,7 @@ import {
 } from "../../utils/keyboards.js";
 
 import { MovieModel } from "../../models/movie.model.js";
+import { errorHandler } from "../../helpers/error.handler.js";
 
 export const moviesAddScene = new Scenes.WizardScene("movies:add",
     // Get title and request description
@@ -38,7 +39,7 @@ export const moviesAddScene = new Scenes.WizardScene("movies:add",
                 return ctx.wizard.next();
             }
         } catch (error) {
-            ;
+            errorHandler(error, ctx);
         }
     },
     // Get description and request code
@@ -74,7 +75,7 @@ export const moviesAddScene = new Scenes.WizardScene("movies:add",
                 return ctx.wizard.next();
             }
         } catch (error) {
-            ;
+            errorHandler(error, ctx);
         }
     },
     // Get code and request link
@@ -120,7 +121,7 @@ export const moviesAddScene = new Scenes.WizardScene("movies:add",
                 return ctx.wizard.next();
             }
         } catch (error) {
-            ;
+            errorHandler(error, ctx);
         }
     },
     // Get link and request approve or cancel
@@ -181,7 +182,7 @@ export const moviesAddScene = new Scenes.WizardScene("movies:add",
                         parse_mode: "HTML",
                         ...approveKeyboard(ctx.session.movie.code)
                     });
-                } catch (error) {
+                } catch {
                     await ctx.reply(
                         "Ma'lumotlarni qayta ishlashda qandaydir muammo yuz berdi. Iltimos qayta urinib ko'ring!",
                         cancelOrBackInlineKeyboard(ctx.wizard.cursor)
@@ -191,42 +192,57 @@ export const moviesAddScene = new Scenes.WizardScene("movies:add",
                 return ctx.wizard.next();
             }
         } catch (error) {
-            ;
+            errorHandler(error, ctx);
         }
     },
     // If get approve save movie, else cancel all
     async (ctx) => {
         try {
+            if (!ctx.session.movie) {
+                return ctx.scene.enter("movies");
+            }
+
             if (ctx.has("callback_query")) {
                 ctx.answerCbQuery("");
                 const callbackData = ctx.callbackQuery.data;
                 const [cursor, data] = callbackData.split(":");
 
-                if (data === ctx.session.movie.code) {
-                    if (cursor === "approve") {
-                        const {
-                            title,
-                            description,
-                            code,
-                            link
-                        } = ctx.session.movie;
-
-                        await MovieModel.create({
-                            title,
-                            description,
-                            code,
-                            link
-                        });
-                        await ctx.reply("Kino muvaffaqiyatli qo'shildi ✅");
-                    } else if (data === "cancel") {
-                        await ctx.editMessageReplyMarkup({});
-                    }
-                    delete ctx.session.movie;
-                    return ctx.scene.enter("movies");
+                if (data !== ctx.session.movie.code) {
+                    return;
                 }
+
+                if (cursor === "approve") {
+                    const {
+                        title,
+                        description,
+                        code,
+                        link
+                    } = ctx.session.movie;
+
+                    const duplicate = await MovieModel.exists({ code });
+                    if (duplicate) {
+                        await ctx.reply(`Bu kod (#${code}) allaqachon mavjud! Kino qo'shilmadi.`);
+                    } else {
+                        try {
+                            await MovieModel.create({ title, description, code, link });
+                            await ctx.reply("Kino muvaffaqiyatli qo'shildi ✅");
+                        } catch (error) {
+                            if (error?.code === 11000) {
+                                await ctx.reply(`Bu kod (#${code}) allaqachon mavjud! Kino qo'shilmadi.`);
+                            } else {
+                                throw error;
+                            }
+                        }
+                    }
+                } else if (cursor === "cancel") {
+                    await ctx.editMessageReplyMarkup({});
+                }
+
+                delete ctx.session.movie;
+                return ctx.scene.enter("movies");
             }
         } catch (error) {
-            ;
+            errorHandler(error, ctx);
         }
     }
 );
@@ -239,6 +255,6 @@ moviesAddScene.enter(async (ctx) => {
             }
         );
     } catch (error) {
-        ;
+        errorHandler(error, ctx);
     }
 });

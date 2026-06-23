@@ -1,13 +1,14 @@
-import("./index.js");
 import express from "express";
 import { bot } from "./core/bot.js";
 import { environments } from "./config/environments.js";
+import { ready } from "./index.js";
 
 const app = express();
 
 app.use(express.json());
 
 async function launchWebhook() {
+  await ready;
   const webhook = await bot.createWebhook({ domain: environments.SERVER_URL });
   app.get("/ping", (_, res) => res.send("Pong!"));
   app.use(webhook);
@@ -16,7 +17,10 @@ async function launchWebhook() {
   });
 }
 
-launchWebhook().then();
+launchWebhook().catch((error) => {
+  console.error("Webhook launch failed:", error);
+  process.exit(1);
+});
 
 process.on("uncaughtException", (error) => {
   console.error(JSON.stringify(error, Object.getOwnPropertyNames(error)));
