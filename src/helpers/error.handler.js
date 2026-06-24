@@ -2,8 +2,25 @@ import { TelegramError } from 'telegraf'
 import { environments } from '../config/environments.js'
 import { bot } from '../core/bot.js'
 
+// Foydalanuvchi tomonidan keladigan, hech narsa qila olmaydigan xatoliklar — error kanaliga yuborilmaydi.
+const isIgnorableTelegramError = (error) => {
+    if (!(error instanceof TelegramError) || error.code !== 403) return false
+    const desc = error.description ?? ""
+    return (
+        desc.includes("bot was blocked by the user") ||
+        desc.includes("user is deactivated") ||
+        desc.includes("bot can't initiate conversation") ||
+        desc.includes("chat not found")
+    )
+}
+
 export const errorHandler = async (error, ctx) => {
     const botUsername = bot.botInfo?.username ?? "bot"
+
+    if (isIgnorableTelegramError(error)) {
+        console.warn(`Ignorable Telegram error (${error.code}): ${error.description}`)
+        return
+    }
 
     try {
         if (ctx) {
