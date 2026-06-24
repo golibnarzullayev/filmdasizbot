@@ -1,9 +1,10 @@
 import { TelegramError } from 'telegraf'
 import { environments } from '../config/environments.js'
 import { bot } from '../core/bot.js'
+import { UserModel } from '../models/user.model.js'
 
-// Foydalanuvchi tomonidan keladigan, hech narsa qila olmaydigan xatoliklar — error kanaliga yuborilmaydi.
-const isIgnorableTelegramError = (error) => {
+// Foydalanuvchi bot bilan aloqani uzgan — qayta urinish foyda bermaydi, userni inactive qilamiz.
+const isUserUnreachableError = (error) => {
     if (!(error instanceof TelegramError) || error.code !== 403) return false
     const desc = error.description ?? ""
     return (
@@ -14,11 +15,20 @@ const isIgnorableTelegramError = (error) => {
     )
 }
 
+// Userni inactive qilib belgilaymiz — keyingi rassilkalarda o'tkazib yuboriladi.
+// User qaytib kelganda authMiddleware uni yana active qiladi.
+const deactivateUser = async (chatId) => {
+    if (!chatId) return
+    await UserModel.updateOne({ chatId }, { active: false })
+        .catch((err) => console.error(`Userni (${chatId}) inactive qilishda xato:`, err?.message ?? err))
+}
+
 export const errorHandler = async (error, ctx) => {
     const botUsername = bot.botInfo?.username ?? "bot"
 
-    if (isIgnorableTelegramError(error)) {
-        console.warn(`Ignorable Telegram error (${error.code}): ${error.description}`)
+    if (isUserUnreachableError(error)) {
+        console.warn(`User unreachable (${error.code}): ${error.description}`)
+        await deactivateUser(ctx?.from?.id)
         return
     }
 
